@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os != 'macOS'
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27"
+          elixir-version: "1.18"
+      - if: runner.os == 'macOS'
+        run: brew install elixir
+      - uses: dtolnay/rust-toolchain@stable
+      - run: mix local.hex --force && mix local.rebar --force
+      - run: mix deps.get
+      - name: properties against the mock
+        run: mix test
+      - name: the real OS store
+        run: mix test --only os_keychain
